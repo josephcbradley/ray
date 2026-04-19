@@ -91,7 +91,11 @@ def test_full_mirror_flow(temp_workspace):
         # 4. Try to add a package from a new env
         project_dir = temp_workspace / "test_project"
         py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-        subprocess.run(["uv", "init", "--python", py_ver, "test_project"], cwd=temp_workspace, check=True)
+        subprocess.run(
+            ["uv", "init", "--python", py_ver, "test_project"],
+            cwd=temp_workspace,
+            check=True,
+        )
 
         toml_path = project_dir / "pyproject.toml"
         with open(toml_path, "a") as f:
