@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wrapper for 'uv init' that configures the project to use the local PyPI mirror.
+# ray: Wrapper for 'uv init' that configures the project to use the local ray mirror.
 
 # Attempt to find the target directory from the arguments
 TARGET_DIR="."
@@ -31,7 +31,7 @@ environments = [
     "sys_platform == 'linux'"
 ]
 EOF
-        echo "Successfully configured $TOML_FILE for local PyPI mirror."
+        echo "Successfully configured $TOML_FILE for local ray mirror."
     else
         echo "Warning: Could not find pyproject.toml at $TOML_FILE"
     fi

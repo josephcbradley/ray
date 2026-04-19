@@ -1,7 +1,7 @@
 [project]
-name = "piptest"
+name = "ray"
 version = "0.1.0"
-description = "Add your description here"
+description = "ray: your local uv"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -15,4 +15,11 @@ dependencies = [
 members = [
     "test_uv_local",
     "newtest",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "requests>=2.33.1",
+    "ruff>=0.15.11",
 ]

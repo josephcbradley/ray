@@ -11,4 +11,7 @@ wheels/
 pip_outs/
 outputs/
 simple/
+error_log.txt.pytest_cache
 error_log.txt
+outputs/
+simple/

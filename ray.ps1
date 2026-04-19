@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Wrapper for 'uv init' that configures the project to use the local PyPI mirror.
+ray: Wrapper for 'uv init' that configures the project to use the local ray mirror.
 #>
 
 # Attempt to find the target directory from the arguments
@@ -33,7 +33,7 @@ environments = [
 ]
 "@
         Add-Content -Path $TomlPath -Value $Config
-        Write-Host "Successfully configured $TomlPath for local PyPI mirror." -ForegroundColor Green
+        Write-Host "Successfully configured $TomlPath for local ray mirror." -ForegroundColor Green
     } else {
         Write-Host "Warning: Could not find pyproject.toml at $TomlPath" -ForegroundColor Yellow
     }
