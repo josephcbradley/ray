@@ -11,12 +11,6 @@ dependencies = [
     "simple503>=0.4.0",
 ]
 
-[tool.uv.workspace]
-members = [
-    "test_uv_local",
-    "newtest",
-]
-
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
