@@ -1,5 +1,7 @@
 # ray: your local uv
 
+[![Tests](https://github.com/josephcbradley/ray/actions/workflows/test.yml/badge.svg)](https://github.com/josephcbradley/ray/actions/workflows/test.yml) [![Coverage](https://codecov.io/gh/josephcbradley/ray/graph/badge.svg?token=xujs1Jma4v)](https://codecov.io/gh/josephcbradley/ray)
+
 ray is an automated system for building and hosting a local PyPI mirror. It is designed to support air-gapped or firewalled environments, specifically ensuring that cross-platform (Linux/Windows) and cross-version (Python 3.12, 3.13, 3.14) dependencies—including binary wheels like `psutil` and `debugpy`—are correctly resolved and available.
 
 ## Key Features
