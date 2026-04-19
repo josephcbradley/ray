@@ -10,3 +10,5 @@ wheels/
 .venv
 pip_outs/
 outputs/
+simple/
+error_log.txt

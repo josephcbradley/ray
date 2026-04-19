@@ -7,4 +7,12 @@ requires-python = ">=3.14"
 dependencies = [
     "ipykernel>=7.2.0",
     "pip>=26.0.1",
+    "pypiserver>=2.4.1",
+    "simple503>=0.4.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "test_uv_local",
+    "newtest",
 ]
