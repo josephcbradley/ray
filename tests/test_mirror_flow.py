@@ -88,21 +88,15 @@ def test_full_mirror_flow(temp_workspace):
         pytest.fail("Mirror server failed to start")
 
     try:
-        # 4. Try to add a package from a new env
+        # 4. Try to add a package from the local mirror
         project_dir = temp_workspace / "test_project"
-        py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-        subprocess.run(
-            ["uv", "init", "--python", py_ver, "test_project"],
-            cwd=temp_workspace,
-            check=True,
-        )
+        subprocess.run(["uv", "init", "test_project"], cwd=temp_workspace, check=True)
 
         toml_path = project_dir / "pyproject.toml"
         with open(toml_path, "a") as f:
             f.write(f'\n[[tool.uv.index]]\nurl="{mirror_url}"\ndefault=true\n')
-            # Fix Python version to the current test runner's version to prevent open-ended resolution ranges
             f.write(
-                f"\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '{py_ver}' and implementation_name == 'cpython' and platform_machine == 'x86_64'\", \"sys_platform == 'windows' and python_version == '{py_ver}' and implementation_name == 'cpython' and platform_machine == 'AMD64'\"]\n"
+                "\n[tool.uv]\nenvironments = [\"implementation_name == 'cpython'\"]\n"
             )
 
         # 5. Run uv add

@@ -59,8 +59,10 @@ def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
             "manylinux_2_17_x86_64",
             "manylinux_2_12_x86_64",
         ]
-    else:
+    elif target_platform == "windows":
         platforms = ["win_amd64"]
+    else:
+        platforms = ["macosx_10_9_universal2", "macosx_11_0_arm64", "macosx_10_9_x86_64"]
 
     # Use a temporary directory for this specific download task to avoid concurrency issues
     with tempfile.TemporaryDirectory() as temp_down_dir:
@@ -121,7 +123,7 @@ def main(reqs_path_str: str = "reqs"):
 
         # 3. Compile for all versions and platforms
         pyvers = ["3.12", "3.13", "3.14"]
-        target_platforms = ["linux", "windows"]
+        target_platforms = ["linux", "windows", "macos"]
 
         for pyver in pyvers:
             for target_platform in target_platforms:
