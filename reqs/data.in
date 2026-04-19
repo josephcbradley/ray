@@ -2,3 +2,5 @@ polars
 pandas
 numpy
 scipy
+pymongo
+pydantic

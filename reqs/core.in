@@ -2,3 +2,4 @@ ipython
 ipykernel 
 httpx
 boto3
+pip
