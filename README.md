@@ -89,6 +89,43 @@ This will run `uv init` and automatically append the following to the `pyproject
 
 ---
 
+## 5. Offline Python Environments
+
+If you are operating in a completely air-gapped environment, `uv` will not be able to dynamically download new Python interpreters when you run `uv init` or create virtual environments. To solve this, you can pre-cache the necessary Python binaries on an internet-connected machine and transfer them to your offline machines.
+
+### Caching Python Versions
+
+We provide a helper script, `cache_pythons.py`, to safely download specified Python versions to a targeted local directory.
+
+**Note:** `uv` downloads binaries specific to the operating system it is running on. You must run this script on an internet-connected Linux machine to get Linux binaries, and an internet-connected Windows machine to get Windows binaries.
+
+1. **Run the cache script:**
+   ```bash
+   # Download to a portable directory (e.g., a USB drive or shared folder)
+   uv run python cache_pythons.py --dir /media/usb/pythons
+   ```
+   *By default, this downloads Python 3.12, 3.13, and 3.14. You can pass specific versions as additional arguments.*
+
+2. **Transfer:** Move the downloaded directory to your offline environment.
+
+### Using Cached Pythons Offline
+
+To direct `uv` to use your local cache instead of attempting network downloads, you simply need to point the `UV_PYTHON_INSTALL_DIR` environment variable to your transferred folder.
+
+**On Linux/macOS:**
+```bash
+export UV_PYTHON_INSTALL_DIR="/path/to/offline/pythons"
+```
+
+**On Windows (PowerShell):**
+```powershell
+$env:UV_PYTHON_INSTALL_DIR="D:\path\to\offline\pythons"
+```
+
+Once this environment variable is set, commands like `uv init` and `uv venv` will seamlessly pull from your local Python cache.
+
+---
+
 ## Troubleshooting
 
 - **Missing Wheels:** If a specific package fails to download for Linux, check the `platforms` list in `process_reqs.py`. It currently supports `manylinux` glibc 2.12 through 2.34.
