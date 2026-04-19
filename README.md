@@ -2,14 +2,7 @@
 
 [![Tests](https://github.com/josephcbradley/ray/actions/workflows/test.yml/badge.svg)](https://github.com/josephcbradley/ray/actions/workflows/test.yml) [![Coverage](https://codecov.io/gh/josephcbradley/ray/graph/badge.svg?token=xujs1Jma4v)](https://codecov.io/gh/josephcbradley/ray)
 
-ray is an automated system for building and hosting a local PyPI mirror. It is designed to support air-gapped or firewalled environments, specifically ensuring that cross-platform (Linux/Windows) and cross-version (Python 3.12, 3.13, 3.14) dependencies—including binary wheels like `psutil` and `debugpy`—are correctly resolved and available.
-
-## Key Features
-
-- **Parallel Downloads:** Uses multi-threaded downloads to build the mirror up to 4x faster.
-- **Cross-Platform:** Automatically pulls wheels for both Linux and Windows.
-- **Secure Handling:** Uses temporary files for intermediate requirement lists to avoid workspace clutter.
-- **Easy Integration:** Custom `ray` wrappers for seamless team adoption.
+ray is an automated system for building and hosting a local PyPI mirror. It is designed to support firewalled environments.
 
 ## Project Structure
 
@@ -23,9 +16,9 @@ ray is an automated system for building and hosting a local PyPI mirror. It is d
 
 ## 1. Setting up Requirements
 
-1.  **Define Core Dependencies:** Edit `reqs/core.in` for packages required by all environments.
-2.  **Define Feature Dependencies:** Add other `.in` files to `reqs/` (e.g., `data.in` for pandas/polars).
-3.  **Cross-Platform Logic:** The system automatically attempts to compile every file in `reqs/` (except `core.in`) for:
+1. **Define Core Dependencies:** Edit `reqs/core.in` for packages required by all environments.
+2. **Define Feature Dependencies:** Add other `.in` files to `reqs/` (e.g., `data.in` for pandas/polars).
+3. **Cross-Platform Logic:** The system automatically attempts to compile every file in `reqs/` (except `core.in`) for:
     - **Platforms:** Linux, Windows
     - **Python Versions:** 3.12, 3.13, 3.14
 
@@ -38,10 +31,11 @@ uv run python process_reqs.py
 ```
 
 **What this does:**
-1.  **Compiles:** Uses `uv pip compile` to generate exact pins for every platform/version combination in the `outputs/` folder.
-2.  **Consolidates:** Gathers every unique package identified across all output files into a secure temporary requirement list.
-3.  **Downloads:** Uses `pip download` in parallel with multi-platform tags (`manylinux_2_34` down to `2_12`) to pull the correct binary wheels for all targets into the `simple/` directory.
-4.  **Indexes:** Runs `simple503` to organize the wheels into a PEP 503 structure and generate HTML indexes.
+
+1. **Compiles:** Uses `uv pip compile` to generate exact pins for every platform/version combination in the `outputs/` folder.
+2. **Consolidates:** Gathers every unique package identified across all output files into a secure temporary requirement list.
+3. **Downloads:** Uses `pip download` in parallel with multi-platform tags (`manylinux_2_34` down to `2_12`) to pull the correct binary wheels for all targets into the `simple/` directory.
+4. **Indexes:** Runs `simple503` to organize the wheels into a PEP 503 structure and generate HTML indexes.
 
 *Errors are logged to `error_log.txt`.*
 
@@ -65,6 +59,7 @@ To ensure developers use the local mirror by default and avoid external resoluti
 ### Deployment
 
 **For Linux/macOS:**
+
 ```bash
 sudo cp ray.sh /usr/local/bin/ray
 sudo chmod +x /usr/local/bin/ray
@@ -72,6 +67,7 @@ sudo chmod +x /usr/local/bin/ray
 
 **For Windows:**
 Add the directory containing `ray.ps1` to your system `PATH`, or add this function to your PowerShell `$PROFILE`:
+
 ```powershell
 function ray { & "C:\path\to\ray.ps1" @args }
 ```
@@ -79,11 +75,13 @@ function ray { & "C:\path\to\ray.ps1" @args }
 ### Usage
 
 When starting a new project, simply run:
+
 ```bash
 ray my-new-project
 ```
 
 This will run `uv init` and automatically append the following to the `pyproject.toml`:
+
 - **Local Index:** Sets the default index to your local ray mirror.
 - **Target Environments:** Pre-configures `uv` to resolve for both Windows and Linux, preventing "locked-in" platform resolution.
 
@@ -100,10 +98,12 @@ We provide a helper script, `cache_pythons.py`, to safely download specified Pyt
 **Note:** `uv` downloads binaries specific to the operating system it is running on. You must run this script on an internet-connected Linux machine to get Linux binaries, and an internet-connected Windows machine to get Windows binaries.
 
 1. **Run the cache script:**
+
    ```bash
    # Download to a portable directory (e.g., a USB drive or shared folder)
    uv run python cache_pythons.py --dir /media/usb/pythons
    ```
+
    *By default, this downloads Python 3.12, 3.13, and 3.14. You can pass specific versions as additional arguments.*
 
 2. **Transfer:** Move the downloaded directory to your offline environment.
@@ -113,11 +113,13 @@ We provide a helper script, `cache_pythons.py`, to safely download specified Pyt
 To direct `uv` to use your local cache instead of attempting network downloads, you simply need to point the `UV_PYTHON_INSTALL_DIR` environment variable to your transferred folder.
 
 **On Linux/macOS:**
+
 ```bash
 export UV_PYTHON_INSTALL_DIR="/path/to/offline/pythons"
 ```
 
 **On Windows (PowerShell):**
+
 ```powershell
 $env:UV_PYTHON_INSTALL_DIR="D:\path\to\offline\pythons"
 ```
