@@ -45,7 +45,7 @@ To host the mirror for your team, run a server pointing to the project root so t
 
 ```bash
 # Using pypiserver (included in project dependencies)
-uv run pypiserver run -p 8080 .
+pypi-server run -p 8080 .
 ```
 
 The mirror will now be available at `http://<your-server-ip>:8080/simple/`.
