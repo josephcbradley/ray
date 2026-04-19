@@ -1,3 +1,4 @@
+import sys
 import subprocess
 import time
 import socket
@@ -5,10 +6,12 @@ import pytest
 from pathlib import Path
 import requests
 
+
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
+
 
 @pytest.fixture
 def temp_workspace(tmp_path):
@@ -16,6 +19,7 @@ def temp_workspace(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     return workspace
+
 
 def test_full_mirror_flow(temp_workspace):
     # 1. Setup minimal requirements
@@ -86,14 +90,15 @@ def test_full_mirror_flow(temp_workspace):
     try:
         # 4. Try to add a package from a new env
         project_dir = temp_workspace / "test_project"
-        subprocess.run(["uv", "init", "test_project"], cwd=temp_workspace, check=True)
+        py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+        subprocess.run(["uv", "init", "--python", py_ver, "test_project"], cwd=temp_workspace, check=True)
 
         toml_path = project_dir / "pyproject.toml"
         with open(toml_path, "a") as f:
             f.write(f'\n[[tool.uv.index]]\nurl="{mirror_url}"\ndefault=true\n')
-            # Fix Python version to 3.13 to prevent open-ended resolution ranges
+            # Fix Python version to the current test runner's version to prevent open-ended resolution ranges
             f.write(
-                "\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '3.13'\", \"sys_platform == 'windows' and python_version == '3.13'\"]\n"
+                f"\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '{py_ver}' and implementation_name == 'cpython'\", \"sys_platform == 'windows' and python_version == '{py_ver}' and implementation_name == 'cpython'\"]\n"
             )
 
         # 5. Run uv add
