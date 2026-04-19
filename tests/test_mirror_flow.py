@@ -102,7 +102,7 @@ def test_full_mirror_flow(temp_workspace):
             f.write(f'\n[[tool.uv.index]]\nurl="{mirror_url}"\ndefault=true\n')
             # Fix Python version to the current test runner's version to prevent open-ended resolution ranges
             f.write(
-                f"\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '{py_ver}' and implementation_name == 'cpython'\", \"sys_platform == 'windows' and python_version == '{py_ver}' and implementation_name == 'cpython'\"]\n"
+                f"\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '{py_ver}' and implementation_name == 'cpython' and platform_machine == 'x86_64'\", \"sys_platform == 'windows' and python_version == '{py_ver}' and implementation_name == 'cpython' and platform_machine == 'AMD64'\"]\n"
             )
 
         # 5. Run uv add
