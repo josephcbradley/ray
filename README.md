@@ -1,4 +1,4 @@
-# ray: your local uv
+# ray: your local bit of uv
 
 [![Tests](https://github.com/josephcbradley/ray/actions/workflows/test.yml/badge.svg)](https://github.com/josephcbradley/ray/actions/workflows/test.yml) [![Coverage](https://codecov.io/gh/josephcbradley/ray/graph/badge.svg?token=xujs1Jma4v)](https://codecov.io/gh/josephcbradley/ray)
 
