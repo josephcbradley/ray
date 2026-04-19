@@ -3,6 +3,7 @@ import subprocess
 import logging
 import sys
 import tempfile
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 # Configure logging
@@ -61,28 +62,41 @@ def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
     else:
         platforms = ["win_amd64"]
 
-    cmd = [
-        "uv",
-        "run",
-        "python",
-        "-m",
-        "pip",
-        "download",
-        "-r",
-        str(all_pkgs_path),
-        "-d",
-        str(simple_dir),
-        "--no-deps",
-        "--python-version",
-        pyver,
-        "--only-binary=:all:",
-    ]
-    for p in platforms:
-        cmd.extend(["--platform", p])
+    # Use a temporary directory for this specific download task to avoid concurrency issues
+    with tempfile.TemporaryDirectory() as temp_down_dir:
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "pip",
+            "download",
+            "-r",
+            str(all_pkgs_path),
+            "-d",
+            temp_down_dir,
+            "--no-deps",
+            "--python-version",
+            pyver,
+            "--only-binary=:all:",
+        ]
+        for p in platforms:
+            cmd.extend(["--platform", p])
 
-    return run_cmd(
-        cmd, f"Download failed for {pyver} on {target_platform}", capture_output=True
-    )
+        success = run_cmd(
+            cmd,
+            f"Download failed for {pyver} on {target_platform}",
+            capture_output=True,
+        )
+
+        if success:
+            # Move downloaded files to the shared simple directory
+            for item in Path(temp_down_dir).iterdir():
+                dest_file = simple_dir / item.name
+                if not dest_file.exists():
+                    shutil.move(str(item), str(dest_file))
+
+        return success
 
 
 def main(reqs_path_str: str = "reqs"):
@@ -182,7 +196,12 @@ def main(reqs_path_str: str = "reqs"):
 
         # 6. Generate PEP 503 index
         print("Generating PEP 503 index with simple503")
-        cmd_simple503 = ["uv", "run", "simple503", "--sort", str(simple_dir)]
+        cmd_simple503 = [
+            "uvx",
+            "simple503",
+            "--sort",
+            str(simple_dir),
+        ]
         run_cmd(
             cmd_simple503, "Failed to generate simple503 index", capture_output=False
         )
