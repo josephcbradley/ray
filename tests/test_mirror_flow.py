@@ -5,12 +5,10 @@ import pytest
 from pathlib import Path
 import requests
 
-
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
-
 
 @pytest.fixture
 def temp_workspace(tmp_path):
@@ -19,12 +17,10 @@ def temp_workspace(tmp_path):
     workspace.mkdir()
     return workspace
 
-
 def test_full_mirror_flow(temp_workspace):
     # 1. Setup minimal requirements
     test_reqs = temp_workspace / "reqs"
     test_reqs.mkdir()
-    # We use ipykernel as requested. It has many dependencies (debugpy, etc.)
     (test_reqs / "core.in").write_text("# core content")
     (test_reqs / "base.in").write_text("ipykernel")
 
@@ -38,26 +34,30 @@ def test_full_mirror_flow(temp_workspace):
         check=True,
     )
 
-    assert (temp_workspace / "simple" / "index.html").exists()
+    outputs_dir = temp_workspace / "outputs"
+    if outputs_dir.exists():
+        print("Outputs directory contents:")
+        for out_file in outputs_dir.iterdir():
+            if "windows" in out_file.name:
+                print(f"  {out_file.name}:")
+                for line in out_file.read_text().splitlines():
+                    if "debugpy" in line:
+                        print(f"    {line}")
 
-    # 3. Serve the mirror
+    simple_dir = temp_workspace / "simple"
+    assert (simple_dir / "index.html").exists()
+
+    print("Contents of simple directory:")
+    for path in simple_dir.rglob("*"):
+        if path.is_file() and "debugpy" in path.name:
+            print(f"  {path.relative_to(simple_dir)}")
+
+    # 3. Serve the mirror using python -m http.server (handles static PEP 503 correctly)
     port = get_free_port()
-    print(f"Starting pypiserver on port {port}...")
-    root_dir = Path(__file__).parent.parent.absolute()
-    print(f"Project root: {root_dir}")
+    print(f"Starting http.server on port {port}...")
     server_proc = subprocess.Popen(
-        [
-            "uv",
-            "run",
-            "python",
-            "-m",
-            "pypiserver",
-            "run",
-            "-p",
-            str(port),
-            str(temp_workspace / "simple"),
-        ],
-        cwd=root_dir,
+        ["python", "-m", "http.server", str(port)],
+        cwd=simple_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -91,12 +91,12 @@ def test_full_mirror_flow(temp_workspace):
         toml_path = project_dir / "pyproject.toml"
         with open(toml_path, "a") as f:
             f.write(f'\n[[tool.uv.index]]\nurl="{mirror_url}"\ndefault=true\n')
+            # Fix Python version to 3.13 to prevent open-ended resolution ranges
             f.write(
-                "\n[tool.uv]\nenvironments = [\"sys_platform == 'linux'\", \"sys_platform == 'windows'\"]\n"
+                "\n[tool.uv]\nenvironments = [\"sys_platform == 'linux' and python_version == '3.13'\", \"sys_platform == 'windows' and python_version == '3.13'\"]\n"
             )
 
         # 5. Run uv add
-        # We use --no-cache to force it to hit the local server
         print("Adding ipykernel from local mirror...")
         result = subprocess.run(
             ["uv", "add", "ipykernel", "--no-cache"],
