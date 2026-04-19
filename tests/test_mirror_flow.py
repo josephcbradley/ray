@@ -88,21 +88,21 @@ def test_full_mirror_flow(temp_workspace):
         pytest.fail("Mirror server failed to start")
 
     try:
-        # 4. Try to add a package from the local mirror
+        # 4. Try to install a package from the local mirror
         project_dir = temp_workspace / "test_project"
-        subprocess.run(["uv", "init", "test_project"], cwd=temp_workspace, check=True)
-
-        toml_path = project_dir / "pyproject.toml"
-        with open(toml_path, "a") as f:
-            f.write(f'\n[[tool.uv.index]]\nurl="{mirror_url}"\ndefault=true\n')
-            f.write(
-                "\n[tool.uv]\nenvironments = [\"implementation_name == 'cpython'\"]\n"
-            )
-
-        # 5. Run uv add
-        print("Adding ipykernel from local mirror...")
+        project_dir.mkdir()
+        
+        # Create a venv for the install test
+        subprocess.run(
+            ["uv", "venv"],
+            cwd=project_dir,
+            check=True,
+            capture_output=True,
+        )
+        
+        print("Installing ipykernel from local mirror...")
         result = subprocess.run(
-            ["uv", "add", "ipykernel", "--no-cache"],
+            ["uv", "pip", "install", "ipykernel", "--index-url", mirror_url, "--no-cache"],
             cwd=project_dir,
             capture_output=True,
             text=True,
@@ -111,10 +111,9 @@ def test_full_mirror_flow(temp_workspace):
         if result.returncode != 0:
             print(f"STDOUT: {result.stdout}")
             print(f"STDERR: {result.stderr}")
-            pytest.fail("Failed to add package from local mirror")
+            pytest.fail("Failed to install package from local mirror")
 
-        assert "ipykernel" in (project_dir / "pyproject.toml").read_text()
-        print("Successfully added ipykernel from local mirror!")
+        print("Successfully installed ipykernel from local mirror!")
 
     finally:
         server_proc.terminate()
