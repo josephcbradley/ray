@@ -163,7 +163,7 @@ def index_reqs(simple_dir):
     run_cmd(cmd_simple503, "Failed to generate simple503 index", capture_output=False)
 
 
-def main():
+def get_parser():
     parser = argparse.ArgumentParser(description="ray: local PyPI mirror manager")
     subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
 
@@ -175,17 +175,22 @@ def main():
     parent_parser.add_argument("--pyvers", nargs="+", default=["3.12", "3.13", "3.14"], help="Python versions to target")
 
     # Sync (Default)
-    sync_parser = subparsers.add_parser("sync", parents=[parent_parser], help="Compile, download, and index")
+    subparsers.add_parser("sync", parents=[parent_parser], help="Compile, download, and index")
 
     # Compile
-    compile_parser = subparsers.add_parser("compile", parents=[parent_parser], help="Only compile requirement files")
+    subparsers.add_parser("compile", parents=[parent_parser], help="Only compile requirement files")
 
     # Download
-    download_parser = subparsers.add_parser("download", parents=[parent_parser], help="Only download wheels from compiled files")
+    subparsers.add_parser("download", parents=[parent_parser], help="Only download wheels from compiled files")
 
     # Index
-    index_parser = subparsers.add_parser("index", parents=[parent_parser], help="Only rebuild the PEP 503 index")
+    subparsers.add_parser("index", parents=[parent_parser], help="Only rebuild the PEP 503 index")
 
+    return parser
+
+
+def main():
+    parser = get_parser()
     args = parser.parse_args()
 
     if not args.command:

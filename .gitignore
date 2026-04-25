@@ -1,17 +1,26 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.coverage
+coverage.xml
 
-# Virtual environments
-.venv
-pip_outs/
+# Project specific
 outputs/
 simple/
-error_log.txt.pytest_cache
 error_log.txt
-outputs/
-simple/
+*.out
+*.metadata
+
+# Large binary files (Wheels, Source Distributions)
+*.whl
+*.tar.gz
+*.zip
+*.egg
+*.egg-info/
+
+# OS specific
+.DS_Store
+Thumbs.db
