@@ -85,9 +85,19 @@ def download_task(pyver, target_platform, out_file, simple_dir):
     if target_platform == "linux":
         platforms = [
             "manylinux_2_34_x86_64",
+            "manylinux_2_31_x86_64",
             "manylinux_2_28_x86_64",
+            "manylinux_2_27_x86_64",
+            "manylinux_2_24_x86_64",
             "manylinux_2_17_x86_64",
             "manylinux_2_12_x86_64",
+            "manylinux_2_34_aarch64",
+            "manylinux_2_31_aarch64",
+            "manylinux_2_28_aarch64",
+            "manylinux_2_27_aarch64",
+            "manylinux_2_24_aarch64",
+            "manylinux_2_17_aarch64",
+            "manylinux_2_12_aarch64",
         ]
     elif target_platform == "windows":
         platforms = ["win_amd64"]
@@ -95,6 +105,9 @@ def download_task(pyver, target_platform, out_file, simple_dir):
         platforms = ["macosx_10_12_x86_64", "macosx_11_0_arm64"]
     else:
         platforms = []
+
+    # Infer ABI from python version (e.g., 3.14 -> cp314)
+    abi = f"cp{pyver.replace('.', '')}"
 
     with tempfile.TemporaryDirectory() as temp_down_dir:
         cmd = [
@@ -111,6 +124,8 @@ def download_task(pyver, target_platform, out_file, simple_dir):
             "--no-deps",
             "--python-version",
             pyver,
+            "--implementation", "cp",
+            "--abi", abi,
             "--only-binary=:all:",
         ]
         if platforms:
