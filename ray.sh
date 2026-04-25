@@ -19,6 +19,12 @@ if [ $? -eq 0 ]; then
     TOML_FILE="$TARGET_DIR/pyproject.toml"
     
     if [ -f "$TOML_FILE" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            MARKER="darwin"
+        else
+            MARKER="linux"
+        fi
+
         cat <<EOF >> "$TOML_FILE"
 
 [[tool.uv.index]]
@@ -27,11 +33,10 @@ default=true
 
 [tool.uv]
 environments = [
-    "sys_platform == 'windows'",
-    "sys_platform == 'linux'"
+    "sys_platform == '$MARKER'"
 ]
 EOF
-        echo "Successfully configured $TOML_FILE for local ray mirror."
+        echo "Successfully configured $TOML_FILE for local ray mirror ($MARKER)."
     else
         echo "Warning: Could not find pyproject.toml at $TOML_FILE"
     fi

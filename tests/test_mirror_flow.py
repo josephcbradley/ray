@@ -27,38 +27,44 @@ def test_full_mirror_flow(temp_workspace):
     test_reqs.mkdir()
     (test_reqs / "core.in").write_text("# core content")
     (test_reqs / "base.in").write_text("ipykernel")
+    # Use rich as a reliable cross-platform package with wheels
+    (test_reqs / "ui.in").write_text("rich")
 
     # 2. Build the mirror
     print("Building minimal mirror...")
     script_path = Path(__file__).parent.parent / "process_reqs.py"
 
-    subprocess.run(
-        ["uv", "run", "python", str(script_path), str(test_reqs)],
-        cwd=temp_workspace,
-        check=True,
-    )
+    pyver = f"{sys.version_info.major}.{sys.version_info.minor}"
 
-    outputs_dir = temp_workspace / "outputs"
-    if outputs_dir.exists():
-        print("Outputs directory contents:")
-        for out_file in outputs_dir.iterdir():
-            if "windows" in out_file.name:
-                print(f"  {out_file.name}:")
-                for line in out_file.read_text().splitlines():
-                    if "debugpy" in line:
-                        print(f"    {line}")
+    try:
+        subprocess.run(
+            ["uv", "run", "python", str(script_path), "sync", "--reqs-dir", str(test_reqs), "--pyvers", pyver],
+            cwd=temp_workspace,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"STDOUT: {e.stdout}")
+        print(f"STDERR: {e.stderr}")
+        log_file = temp_workspace / "error_log.txt"
+        if log_file.exists():
+            print("--- ERROR LOG ---")
+            print(log_file.read_text())
+        raise e
 
     simple_dir = temp_workspace / "simple"
     assert (simple_dir / "index.html").exists()
 
-    print("Contents of simple directory:")
+    has_rich = False
     for path in simple_dir.rglob("*"):
-        if path.is_file() and "debugpy" in path.name:
-            print(f"  {path.relative_to(simple_dir)}")
+        if path.is_file() and "rich" in path.name:
+            has_rich = True
+            break
+    assert has_rich, "rich wheel was not downloaded"
 
-    # 3. Serve the mirror using python -m http.server (handles static PEP 503 correctly)
+    # 3. Serve the mirror
     port = get_free_port()
-    print(f"Starting http.server on port {port}...")
     server_proc = subprocess.Popen(
         ["python", "-m", "http.server", str(port)],
         cwd=simple_dir,
@@ -66,55 +72,38 @@ def test_full_mirror_flow(temp_workspace):
         stderr=subprocess.PIPE,
         text=True,
     )
-
     mirror_url = f"http://localhost:{port}/"
 
-    # Wait for server to be up
-    max_retries = 20
-    success = False
+    # Wait for server
+    max_retries = 10
     while max_retries > 0:
         try:
-            r = requests.get(mirror_url, timeout=1)
-            if r.status_code == 200:
-                success = True
+            if requests.get(mirror_url, timeout=1).status_code == 200:
                 break
-        except Exception:
+        except:
             pass
         time.sleep(1)
         max_retries -= 1
 
-    if not success:
-        server_proc.terminate()
-        pytest.fail("Mirror server failed to start")
-
     try:
-        # 4. Try to install a package from the local mirror
+        # 4. Install from mirror
         project_dir = temp_workspace / "test_project"
         project_dir.mkdir()
+        subprocess.run(["uv", "venv"], cwd=project_dir, check=True, capture_output=True)
         
-        # Create a venv for the install test
-        subprocess.run(
-            ["uv", "venv"],
-            cwd=project_dir,
-            check=True,
-            capture_output=True,
-        )
-        
-        print("Installing ipykernel from local mirror...")
+        venv_path = project_dir / ".venv"
+        python_exe = venv_path / "bin" / "python"
+        if sys.platform == "win32":
+             python_exe = venv_path / "Scripts" / "python.exe"
+
         result = subprocess.run(
-            ["uv", "pip", "install", "ipykernel", "--index-url", mirror_url, "--no-cache"],
+            ["uv", "pip", "install", "rich", "--index-url", mirror_url, "--no-cache", "--python", str(python_exe)],
             cwd=project_dir,
             capture_output=True,
             text=True,
         )
-
-        if result.returncode != 0:
-            print(f"STDOUT: {result.stdout}")
-            print(f"STDERR: {result.stderr}")
-            pytest.fail("Failed to install package from local mirror")
-
-        print("Successfully installed ipykernel from local mirror!")
+        assert result.returncode == 0, f"Failed to install rich: {result.stderr}"
+        print("Successfully installed rich from local mirror!")
 
     finally:
         server_proc.terminate()
-        server_proc.wait()

@@ -28,12 +28,11 @@ default=true
 
 [tool.uv]
 environments = [
-    "sys_platform == 'windows'",
-    "sys_platform == 'linux'"
+    "sys_platform == 'win32'"
 ]
 "@
         Add-Content -Path $TomlPath -Value $Config
-        Write-Host "Successfully configured $TomlPath for local ray mirror." -ForegroundColor Green
+        Write-Host "Successfully configured $TomlPath for local ray mirror (win32)." -ForegroundColor Green
     } else {
         Write-Host "Warning: Could not find pyproject.toml at $TomlPath" -ForegroundColor Yellow
     }

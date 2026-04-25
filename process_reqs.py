@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import subprocess
 import logging
@@ -40,18 +41,47 @@ def run_cmd(cmd: list[str], context: str, capture_output: bool = False):
         return False
 
 
-def nohash(text: str) -> bool:
-    if "#" in text:
-        return False
+def get_current_platform():
+    """Detects the current platform and returns a normalized name."""
+    if sys.platform == "win32":
+        return "windows"
+    elif sys.platform == "darwin":
+        return "macos"
     else:
-        return True
+        return "linux"
 
 
-def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
-    """Worker task for parallel downloads."""
-    print(f"Downloading for {pyver} on {target_platform}")
+def compile_reqs(reqs_to_process, core_req, outputs_dir, pyvers, target_platforms):
+    """Compiles requirement files into .out files."""
+    for pyver in pyvers:
+        for target_platform in target_platforms:
+            for req in reqs_to_process:
+                output_file = outputs_dir / f"{req.stem}_{target_platform}_{pyver}.out"
+                print(f"Compiling {req.name} for {pyver} on {target_platform}")
+                cmd = [
+                    "uv",
+                    "pip",
+                    "compile",
+                    str(core_req),
+                    str(req),
+                    "--python-platform",
+                    target_platform,
+                    "--python-version",
+                    pyver,
+                    "-o",
+                    str(output_file),
+                ]
+                run_cmd(
+                    cmd,
+                    f"Compilation failed for {req.name} ({pyver}, {target_platform})",
+                    capture_output=True,
+                )
 
-    # Map simple platform names to tags pip recognizes
+
+def download_task(pyver, target_platform, out_file, simple_dir):
+    """Worker task for parallel downloads from a specific .out file."""
+    print(f"Downloading packages for {pyver} on {target_platform} from {out_file.name}")
+
     if target_platform == "linux":
         platforms = [
             "manylinux_2_34_x86_64",
@@ -59,10 +89,13 @@ def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
             "manylinux_2_17_x86_64",
             "manylinux_2_12_x86_64",
         ]
-    else:
+    elif target_platform == "windows":
         platforms = ["win_amd64"]
+    elif target_platform == "macos":
+        platforms = ["macosx_10_12_x86_64", "macosx_11_0_arm64"]
+    else:
+        platforms = []
 
-    # Use a temporary directory for this specific download task to avoid concurrency issues
     with tempfile.TemporaryDirectory() as temp_down_dir:
         cmd = [
             "uv",
@@ -72,7 +105,7 @@ def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
             "pip",
             "download",
             "-r",
-            str(all_pkgs_path),
+            str(out_file),
             "-d",
             temp_down_dir,
             "--no-deps",
@@ -80,134 +113,132 @@ def download_task(pyver, target_platform, all_pkgs_path, simple_dir):
             pyver,
             "--only-binary=:all:",
         ]
-        for p in platforms:
-            cmd.extend(["--platform", p])
+        if platforms:
+            for p in platforms:
+                cmd.extend(["--platform", p])
 
         success = run_cmd(
             cmd,
-            f"Download failed for {pyver} on {target_platform}",
+            f"Download failed for {out_file.name} ({pyver}, {target_platform})",
             capture_output=True,
         )
 
         if success:
-            # Move downloaded files to the shared simple directory
             for item in Path(temp_down_dir).iterdir():
                 dest_file = simple_dir / item.name
                 if not dest_file.exists():
                     shutil.move(str(item), str(dest_file))
-
         return success
 
 
-def main(reqs_path_str: str = "reqs"):
-    try:
-        # 1. Setup paths
-        reqs_path = Path(reqs_path_str)
-        outputs_dir = Path("outputs")
-        outputs_dir.mkdir(exist_ok=True)
-        simple_dir = Path("simple")
-        simple_dir.mkdir(exist_ok=True)
-
-        # 2. Identify requirement files
-        reqs_to_process: list[Path] = []
-        for path in reqs_path.rglob("*.in"):
-            if path.stem == "core":
-                continue
-            reqs_to_process.append(path)
-
-        core_req = reqs_path / Path("core.in")
-        if not core_req.is_file():
-            raise FileNotFoundError("Could not find the core file.")
-
-        # 3. Compile for all versions and platforms
-        pyvers = ["3.12", "3.13", "3.14"]
-        target_platforms = ["linux", "windows"]
-
+def download_reqs(outputs_dir, simple_dir, pyvers, target_platforms):
+    """Downloads wheels for all compiled .out files."""
+    tasks = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
         for pyver in pyvers:
             for target_platform in target_platforms:
-                for req in reqs_to_process:
-                    output_file = (
-                        outputs_dir / f"{req.stem}_{target_platform}_{pyver}.out"
-                    )
-                    print(f"Compiling {req} for {pyver} on {target_platform}")
-                    cmd = [
-                        "uv",
-                        "pip",
-                        "compile",
-                        str(core_req),
-                        str(req),
-                        "--python-platform",
-                        target_platform,
-                        "--python-version",
-                        pyver,
-                        "-o",
-                        str(output_file),
-                    ]
-                    run_cmd(
-                        cmd,
-                        f"Compilation failed for {req} ({pyver}, {target_platform})",
-                        capture_output=True,
-                    )
-
-        # 4. Consolidate into a temporary requirement file
-        combined_str = []
-        for reqpath in outputs_dir.iterdir():
-            if reqpath.suffix == ".out":
-                with open(reqpath, "r") as infile:
-                    lines = infile.readlines()
-                    combined_str.extend(lines)
-
-        print(f"Initial lines gathered: {len(combined_str)}")
-        # Deduplicate and filter out comments/empty lines
-        combined_str = list(
-            set([line for line in combined_str if line.strip() and nohash(line)])
-        )
-        print(f"Unique packages: {len(combined_str)}")
-
-        # Security/Cleanliness: Use a temporary file for the combined package list
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
-            tf.write("".join(combined_str))
-            all_pkgs_path = Path(tf.name)
-
-        try:
-            # 5. Download version-specific wheels in parallel
-            tasks = []
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                for pyver in pyvers:
-                    for target_platform in target_platforms:
-                        tasks.append(
-                            executor.submit(
-                                download_task,
-                                pyver,
-                                target_platform,
-                                all_pkgs_path,
-                                simple_dir,
-                            )
+                for out_file in outputs_dir.glob(f"*_{target_platform}_{pyver}.out"):
+                    tasks.append(
+                        executor.submit(
+                            download_task,
+                            pyver,
+                            target_platform,
+                            out_file,
+                            simple_dir,
                         )
+                    )
+        for task in tasks:
+            task.result()
 
-                # Wait for all tasks to complete
-                for task in tasks:
-                    task.result()
 
-        finally:
-            # Clean up the temporary requirement file
-            if all_pkgs_path.exists():
-                all_pkgs_path.unlink()
+def index_reqs(simple_dir):
+    """Generates the PEP 503 index."""
+    print("Generating PEP 503 index with simple503")
+    cmd_simple503 = [
+        "uvx",
+        "simple503",
+        "--sort",
+        str(simple_dir),
+    ]
+    run_cmd(cmd_simple503, "Failed to generate simple503 index", capture_output=False)
 
-        # 6. Generate PEP 503 index
-        print("Generating PEP 503 index with simple503")
-        cmd_simple503 = [
-            "uvx",
-            "simple503",
-            "--sort",
-            str(simple_dir),
-        ]
-        run_cmd(
-            cmd_simple503, "Failed to generate simple503 index", capture_output=False
-        )
 
-    except Exception as e:
-        log_error("Unexpected error in main execution", str(e))
+def main():
+    parser = argparse.ArgumentParser(description="ray: local PyPI mirror manager")
+    subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
+
+    # Common options
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("--reqs-dir", default="reqs", help="Input .in files directory")
+    parent_parser.add_argument("--outputs-dir", default="outputs", help="Compiled .out files directory")
+    parent_parser.add_argument("--simple-dir", default="simple", help="Target PEP 503 directory")
+    parent_parser.add_argument("--pyvers", nargs="+", default=["3.12", "3.13", "3.14"], help="Python versions to target")
+
+    # Sync (Default)
+    sync_parser = subparsers.add_parser("sync", parents=[parent_parser], help="Compile, download, and index")
+
+    # Compile
+    compile_parser = subparsers.add_parser("compile", parents=[parent_parser], help="Only compile requirement files")
+
+    # Download
+    download_parser = subparsers.add_parser("download", parents=[parent_parser], help="Only download wheels from compiled files")
+
+    # Index
+    index_parser = subparsers.add_parser("index", parents=[parent_parser], help="Only rebuild the PEP 503 index")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
+    reqs_path = Path(args.reqs_dir)
+    outputs_dir = Path(args.outputs_dir)
+    simple_dir = Path(args.simple_dir)
+    pyvers = args.pyvers
+
+    outputs_dir.mkdir(exist_ok=True)
+    simple_dir.mkdir(exist_ok=True)
+
+    target_platforms = [get_current_platform()]
+
+    reqs_to_process = []
+    if reqs_path.exists():
+        for path in reqs_path.rglob("*.in"):
+            if path.stem != "core":
+                reqs_to_process.append(path)
+
+    core_req = reqs_path / "core.in"
+
+    if args.command == "compile":
+        if not core_req.exists():
+            log_error("Compile failed", "core.in not found")
+            return
+        compile_reqs(reqs_to_process, core_req, outputs_dir, pyvers, target_platforms)
+
+    elif args.command == "download":
+        download_reqs(outputs_dir, simple_dir, pyvers, target_platforms)
+
+    elif args.command == "index":
+        index_reqs(simple_dir)
+
+    elif args.command == "sync":
+        if not core_req.exists():
+            log_error("Sync failed", "core.in not found")
+            return
+        # The user requested: "process each each file ... for compilation and download separately"
+        # So we iterate through each req file, compile it, and then download it.
+        for req in reqs_to_process:
+            print(f"--- Processing {req.name} ---")
+            compile_reqs([req], core_req, outputs_dir, pyvers, target_platforms)
+            # Download only for the current req files that were just compiled
+            # But download_reqs currently glob all. Let's make a more specific one if needed.
+            # Actually, download_reqs globs by platform/version. 
+            # If we want to be strict about "separately", we can just call download_reqs after each compile.
+            # Wheels that already exist won't be re-downloaded anyway.
+            download_reqs(outputs_dir, simple_dir, pyvers, target_platforms)
+        
+        index_reqs(simple_dir)
 
 
 if __name__ == "__main__":

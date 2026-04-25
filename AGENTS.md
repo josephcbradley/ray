@@ -4,7 +4,8 @@ This document provides foundational mandates and procedural guidance for AI agen
 
 ## Core Principles
 
-- **Cross-Platform Integrity:** All changes must respect both Linux and Windows environments. Never assume a POSIX-only or Windows-only architecture.
+- **CLI:** Use `process_reqs.py sync` as the default entry point. Subcommands `compile`, `download`, and `index` are available for granular control.
+- **Granularity:** Always process each requirement file separately (e.g., `core.in` + `ai.in`) to ensure clear dependency resolution and binary wheel selection.
 - **Performance First:** Building mirrors is I/O intensive. Favor parallel execution (e.g., `ThreadPoolExecutor`) for network operations.
 - **Dependency Strictness:** Prioritize binary wheel resolution (`--only-binary=:all:`) and explicit platform/version tagging during downloads.
 - **Minimal Footprint:** Use temporary files for intermediate processes to keep the user workspace clean.
@@ -17,7 +18,7 @@ This document provides foundational mandates and procedural guidance for AI agen
 - Use `pytest` for verification. New features must be accompanied by an end-to-end test in `tests/`.
 
 ### 2. The Mirror Workflow
-- **Compilation:** Must iterate through all supported `pyvers` and `target_platforms`.
+- **Compilation:** Must target all supported `pyvers` for the current platform.
 - **Download:** Must use a comprehensive list of `manylinux` tags to ensure glibc compatibility across different package release standards.
 - **Indexing:** Always run `simple503 --sort` after downloads to maintain a PEP 503 compliant structure.
 
