@@ -226,18 +226,17 @@ def main():
         if not core_req.exists():
             log_error("Sync failed", "core.in not found")
             return
-        # The user requested: "process each each file ... for compilation and download separately"
-        # So we iterate through each req file, compile it, and then download it.
+            
+        # Compile if needed
         for req in reqs_to_process:
-            print(f"--- Processing {req.name} ---")
-            compile_reqs([req], core_req, outputs_dir, pyvers, target_platforms)
-            # Download only for the current req files that were just compiled
-            # But download_reqs currently glob all. Let's make a more specific one if needed.
-            # Actually, download_reqs globs by platform/version. 
-            # If we want to be strict about "separately", we can just call download_reqs after each compile.
-            # Wheels that already exist won't be re-downloaded anyway.
-            download_reqs(outputs_dir, simple_dir, pyvers, target_platforms)
+            output_file = outputs_dir / f"{req.stem}_{target_platforms[0]}_{pyvers[0]}.out"
+            # If any target out file doesn't exist, we run compile for all
+            if not output_file.exists():
+                 print(f"--- Processing {req.name} ---")
+                 compile_reqs([req], core_req, outputs_dir, pyvers, target_platforms)
         
+        # Always download
+        download_reqs(outputs_dir, simple_dir, pyvers, target_platforms)
         index_reqs(simple_dir)
 
 
