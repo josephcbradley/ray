@@ -27,28 +27,40 @@ def test_jaxlib_0_10_0_download(temp_workspace):
     test_reqs.mkdir()
     (test_reqs / "core.in").write_text("")
     (test_reqs / "ai.in").write_text("jaxlib==0.10.0")
-    
+
     # Pre-create the output file to skip compilation stage (which fails due to scipy dependencies)
     outputs_dir = temp_workspace / "outputs"
     outputs_dir.mkdir()
-    
+
     current_platform = "macos"
     if sys.platform == "win32":
         current_platform = "windows"
     elif sys.platform == "linux":
         current_platform = "linux"
-        
+
     (outputs_dir / f"ai_{current_platform}_3.14.out").write_text("jaxlib==0.10.0")
 
     script_path = Path(__file__).parent.parent / "process_reqs.py"
-    
+
     # Target 3.14 for jaxlib 0.10.0
     subprocess.run(
-        ["uv", "run", "python", str(script_path), "sync", "--reqs-dir", str(test_reqs), "--pyvers", "3.14", "--outputs-dir", str(outputs_dir)],
+        [
+            "uv",
+            "run",
+            "python",
+            str(script_path),
+            "sync",
+            "--reqs-dir",
+            str(test_reqs),
+            "--pyvers",
+            "3.14",
+            "--outputs-dir",
+            str(outputs_dir),
+        ],
         cwd=temp_workspace,
         check=True,
     )
-    
+
     simple_dir = temp_workspace / "simple"
     has_jaxlib_010 = False
     for path in simple_dir.rglob("jaxlib-0.10.0*"):
@@ -56,7 +68,7 @@ def test_jaxlib_0_10_0_download(temp_workspace):
             has_jaxlib_010 = True
             print(f"Verified jaxlib 0.10.0 wheel: {path.name}")
             break
-            
+
     assert has_jaxlib_010, "jaxlib 0.10.0 wheel was not downloaded"
 
 
@@ -77,7 +89,17 @@ def test_full_mirror_flow(temp_workspace):
 
     try:
         subprocess.run(
-            ["uv", "run", "python", str(script_path), "sync", "--reqs-dir", str(test_reqs), "--pyvers", pyver],
+            [
+                "uv",
+                "run",
+                "python",
+                str(script_path),
+                "sync",
+                "--reqs-dir",
+                str(test_reqs),
+                "--pyvers",
+                pyver,
+            ],
             cwd=temp_workspace,
             check=True,
             capture_output=True,
@@ -119,7 +141,7 @@ def test_full_mirror_flow(temp_workspace):
         try:
             if requests.get(mirror_url, timeout=1).status_code == 200:
                 break
-        except:
+        except requests.RequestException:
             pass
         time.sleep(1)
         max_retries -= 1
@@ -129,14 +151,24 @@ def test_full_mirror_flow(temp_workspace):
         project_dir = temp_workspace / "test_project"
         project_dir.mkdir()
         subprocess.run(["uv", "venv"], cwd=project_dir, check=True, capture_output=True)
-        
+
         venv_path = project_dir / ".venv"
         python_exe = venv_path / "bin" / "python"
         if sys.platform == "win32":
-             python_exe = venv_path / "Scripts" / "python.exe"
+            python_exe = venv_path / "Scripts" / "python.exe"
 
         result = subprocess.run(
-            ["uv", "pip", "install", "rich", "--index-url", mirror_url, "--no-cache", "--python", str(python_exe)],
+            [
+                "uv",
+                "pip",
+                "install",
+                "rich",
+                "--index-url",
+                mirror_url,
+                "--no-cache",
+                "--python",
+                str(python_exe),
+            ],
             cwd=project_dir,
             capture_output=True,
             text=True,

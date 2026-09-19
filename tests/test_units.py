@@ -1,12 +1,10 @@
 import sys
 import os
-from pathlib import Path
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from unittest.mock import patch, MagicMock
-import pytest
 from process_reqs import get_current_platform, get_parser, log_error, run_cmd
 
 
@@ -31,13 +29,20 @@ def test_arg_parser_defaults():
 
 def test_arg_parser_custom_values():
     parser = get_parser()
-    args = parser.parse_args([
-        "compile",
-        "--reqs-dir", "custom_reqs",
-        "--outputs-dir", "custom_outs",
-        "--simple-dir", "custom_simple",
-        "--pyvers", "3.11", "3.12"
-    ])
+    args = parser.parse_args(
+        [
+            "compile",
+            "--reqs-dir",
+            "custom_reqs",
+            "--outputs-dir",
+            "custom_outs",
+            "--simple-dir",
+            "custom_simple",
+            "--pyvers",
+            "3.11",
+            "3.12",
+        ]
+    )
     assert args.command == "compile"
     assert args.reqs_dir == "custom_reqs"
     assert args.outputs_dir == "custom_outs"
@@ -48,11 +53,11 @@ def test_arg_parser_custom_values():
 def test_log_error(capsys):
     with patch("logging.error") as mock_log:
         log_error("Test Context", "Test Details")
-        
+
         # Verify stderr output
         captured = capsys.readouterr()
         assert "ERROR: Test Context. See error_log.txt for details." in captured.err
-        
+
         # Verify logging call
         mock_log.assert_called_once()
         args, _ = mock_log.call_args
@@ -72,6 +77,6 @@ def test_run_cmd_failure(capsys):
         mock_run.return_value = MagicMock(returncode=1, stderr="Error message")
         # capture_output=True so we can verify the error log detail
         assert run_cmd(["false"], "context", capture_output=True) is False
-        
+
         captured = capsys.readouterr()
         assert "ERROR: context" in captured.err

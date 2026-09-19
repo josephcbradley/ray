@@ -124,8 +124,10 @@ def download_task(pyver, target_platform, out_file, simple_dir):
             "--no-deps",
             "--python-version",
             pyver,
-            "--implementation", "cp",
-            "--abi", abi,
+            "--implementation",
+            "cp",
+            "--abi",
+            abi,
             "--only-binary=:all:",
         ]
         if platforms:
@@ -184,22 +186,43 @@ def get_parser():
 
     # Common options
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--reqs-dir", default="reqs", help="Input .in files directory")
-    parent_parser.add_argument("--outputs-dir", default="outputs", help="Compiled .out files directory")
-    parent_parser.add_argument("--simple-dir", default="simple", help="Target PEP 503 directory")
-    parent_parser.add_argument("--pyvers", nargs="+", default=["3.12", "3.13", "3.14"], help="Python versions to target")
+    parent_parser.add_argument(
+        "--reqs-dir", default="reqs", help="Input .in files directory"
+    )
+    parent_parser.add_argument(
+        "--outputs-dir", default="outputs", help="Compiled .out files directory"
+    )
+    parent_parser.add_argument(
+        "--simple-dir", default="simple", help="Target PEP 503 directory"
+    )
+    parent_parser.add_argument(
+        "--pyvers",
+        nargs="+",
+        default=["3.12", "3.13", "3.14"],
+        help="Python versions to target",
+    )
 
     # Sync (Default)
-    subparsers.add_parser("sync", parents=[parent_parser], help="Compile, download, and index")
+    subparsers.add_parser(
+        "sync", parents=[parent_parser], help="Compile, download, and index"
+    )
 
     # Compile
-    subparsers.add_parser("compile", parents=[parent_parser], help="Only compile requirement files")
+    subparsers.add_parser(
+        "compile", parents=[parent_parser], help="Only compile requirement files"
+    )
 
     # Download
-    subparsers.add_parser("download", parents=[parent_parser], help="Only download wheels from compiled files")
+    subparsers.add_parser(
+        "download",
+        parents=[parent_parser],
+        help="Only download wheels from compiled files",
+    )
 
     # Index
-    subparsers.add_parser("index", parents=[parent_parser], help="Only rebuild the PEP 503 index")
+    subparsers.add_parser(
+        "index", parents=[parent_parser], help="Only rebuild the PEP 503 index"
+    )
 
     return parser
 
@@ -246,15 +269,17 @@ def main():
         if not core_req.exists():
             log_error("Sync failed", "core.in not found")
             return
-            
+
         # Compile if needed
         for req in reqs_to_process:
-            output_file = outputs_dir / f"{req.stem}_{target_platforms[0]}_{pyvers[0]}.out"
+            output_file = (
+                outputs_dir / f"{req.stem}_{target_platforms[0]}_{pyvers[0]}.out"
+            )
             # If any target out file doesn't exist, we run compile for all
             if not output_file.exists():
-                 print(f"--- Processing {req.name} ---")
-                 compile_reqs([req], core_req, outputs_dir, pyvers, target_platforms)
-        
+                print(f"--- Processing {req.name} ---")
+                compile_reqs([req], core_req, outputs_dir, pyvers, target_platforms)
+
         # Always download
         download_reqs(outputs_dir, simple_dir, pyvers, target_platforms)
         index_reqs(simple_dir)
