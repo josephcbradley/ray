@@ -18,11 +18,11 @@ from process_reqs import (
 
 
 def test_get_current_platform():
-    with patch("sys.platform", "win32"):
+    with patch("platform.system", return_value="Windows"):
         assert get_current_platform() == "windows"
-    with patch("sys.platform", "darwin"):
+    with patch("platform.system", return_value="Darwin"):
         assert get_current_platform() == "macos"
-    with patch("sys.platform", "linux"):
+    with patch("platform.system", return_value="Linux"):
         assert get_current_platform() == "linux"
 
 

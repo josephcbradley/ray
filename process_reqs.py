@@ -42,11 +42,12 @@ def run_cmd(cmd: list[str], context: str, capture_output: bool = False):
         return False
 
 
-def get_current_platform():
+def get_current_platform() -> str:
     """Detects the current platform and returns a normalized name."""
-    if sys.platform == "win32":
+    system = platform.system().lower()
+    if system == "windows":
         return "windows"
-    elif sys.platform == "darwin":
+    elif system == "darwin":
         return "macos"
     else:
         return "linux"
