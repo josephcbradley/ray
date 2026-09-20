@@ -1,11 +1,20 @@
-import sys
 import os
+from pathlib import Path
+import sys
+from unittest.mock import MagicMock, patch
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from unittest.mock import patch, MagicMock
-from process_reqs import get_current_platform, get_parser, log_error, run_cmd
+from process_reqs import (
+    download_task,
+    get_current_platform,
+    get_parser,
+    index_reqs,
+    log_error,
+    main,
+    run_cmd,
+)
 
 
 def test_get_current_platform():
@@ -80,3 +89,91 @@ def test_run_cmd_failure(capsys):
 
         captured = capsys.readouterr()
         assert "ERROR: context" in captured.err
+
+
+def test_index_reqs():
+    with patch("process_reqs.run_cmd") as mock_run:
+        mock_run.return_value = True
+        simple_dir = Path("/tmp/test_simple")
+        index_reqs(simple_dir)
+        mock_run.assert_called_once_with(
+            ["uvx", "simple503", "--sort", str(simple_dir)],
+            "Failed to generate simple503 index",
+            capture_output=False,
+        )
+
+
+def test_download_task_platform_tags_linux():
+    with patch("process_reqs.run_cmd") as mock_run:
+        mock_run.return_value = True
+        out_file = Path("/tmp/core_linux_3.12.out")
+        simple_dir = Path("/tmp/simple")
+        download_task("3.12", "linux", out_file, simple_dir)
+
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert "--abi" in cmd
+        assert "cp312" in cmd
+        assert "--platform" in cmd
+        assert "manylinux_2_34_x86_64" in cmd
+        assert "manylinux_2_17_x86_64" in cmd
+        assert "manylinux_2_17_aarch64" in cmd
+
+
+def test_download_task_platform_tags_macos():
+    with patch("process_reqs.run_cmd") as mock_run:
+        mock_run.return_value = True
+        out_file = Path("/tmp/core_macos_3.14.out")
+        simple_dir = Path("/tmp/simple")
+        download_task("3.14", "macos", out_file, simple_dir)
+
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert "--abi" in cmd
+        assert "cp314" in cmd
+        assert "--platform" in cmd
+        assert "macosx_10_12_x86_64" in cmd
+        assert "macosx_11_0_arm64" in cmd
+
+
+def test_download_task_platform_tags_windows():
+    with patch("process_reqs.run_cmd") as mock_run:
+        mock_run.return_value = True
+        out_file = Path("/tmp/core_windows_3.13.out")
+        simple_dir = Path("/tmp/simple")
+        download_task("3.13", "windows", out_file, simple_dir)
+
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert "--abi" in cmd
+        assert "cp313" in cmd
+        assert "--platform" in cmd
+        assert "win_amd64" in cmd
+
+
+def test_main_subcommand_compile():
+    with (
+        patch(
+            "sys.argv",
+            [
+                "process_reqs.py",
+                "compile",
+                "--reqs-dir",
+                "reqs",
+                "--pyvers",
+                "3.14",
+            ],
+        ),
+        patch("process_reqs.compile_reqs") as mock_compile,
+    ):
+        main()
+        assert mock_compile.called
+
+
+def test_main_subcommand_index():
+    with (
+        patch("sys.argv", ["process_reqs.py", "index", "--simple-dir", "simple"]),
+        patch("process_reqs.index_reqs") as mock_index,
+    ):
+        main()
+        mock_index.assert_called_once_with(Path("simple"))
