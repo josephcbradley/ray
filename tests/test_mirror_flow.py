@@ -1,13 +1,13 @@
 import contextlib
+import functools
+import http.server
 import os
 from pathlib import Path
-import socket
 import subprocess
 import sys
-import time
+import threading
 
 import pytest
-import requests
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -21,10 +21,11 @@ def get_clean_env():
     return env
 
 
-def get_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
+class _QuietHTTPHandler(http.server.SimpleHTTPRequestHandler):
+    """SimpleHTTPRequestHandler with suppressed logging to keep test output clean."""
+
+    def log_message(self, format, *args):
+        pass
 
 
 @pytest.fixture
@@ -38,43 +39,16 @@ def temp_workspace(tmp_path):
 @contextlib.contextmanager
 def serve_directory(directory: Path):
     """Starts an HTTP server serving directory on an ephemeral port and guarantees termination."""
-    port = get_free_port()
-    server_proc = subprocess.Popen(
-        [
-            "uv",
-            "run",
-            "python",
-            "-m",
-            "http.server",
-            str(port),
-            "--directory",
-            str(directory),
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=get_clean_env(),
-    )
-    url = f"http://localhost:{port}/"
-
-    max_retries = 20
-    for _ in range(max_retries):
+    handler = functools.partial(_QuietHTTPHandler, directory=str(directory))
+    with http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler) as httpd:
+        port = httpd.server_address[1]
+        server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        server_thread.start()
         try:
-            if requests.get(url, timeout=1).status_code == 200:
-                break
-        except requests.RequestException:
-            pass
-        time.sleep(0.5)
-    else:
-        server_proc.terminate()
-        server_proc.wait(timeout=5)
-        raise RuntimeError(f"Failed to start http server at {url}")
-
-    try:
-        yield url
-    finally:
-        server_proc.terminate()
-        server_proc.wait(timeout=5)
+            yield f"http://127.0.0.1:{port}/"
+        finally:
+            httpd.shutdown()
+            server_thread.join()
 
 
 def test_jaxlib_0_10_0_download(temp_workspace):
