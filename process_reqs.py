@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import subprocess
 import logging
+import platform
 import sys
 import tempfile
 import shutil
@@ -102,7 +103,10 @@ def download_task(pyver, target_platform, out_file, simple_dir):
     elif target_platform == "windows":
         platforms = ["win_amd64"]
     elif target_platform == "macos":
-        platforms = ["macosx_10_12_x86_64", "macosx_11_0_arm64"]
+        if platform.machine() == "arm64":
+            platforms = ["macosx_11_0_arm64", "macosx_10_12_x86_64"]
+        else:
+            platforms = ["macosx_10_12_x86_64", "macosx_11_0_arm64"]
     else:
         platforms = []
 

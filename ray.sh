@@ -21,8 +21,11 @@ if [ $? -eq 0 ]; then
     if [ -f "$TOML_FILE" ]; then
         if [[ "$OSTYPE" == "darwin"* ]]; then
             MARKER="darwin"
+            ARCH=$(uname -m)
+            ENV_SPEC="sys_platform == '$MARKER' and platform_machine == '$ARCH'"
         else
             MARKER="linux"
+            ENV_SPEC="sys_platform == '$MARKER'"
         fi
 
         cat <<EOF >> "$TOML_FILE"
@@ -33,7 +36,7 @@ default=true
 
 [tool.uv]
 environments = [
-    "sys_platform == '$MARKER'"
+    "$ENV_SPEC"
 ]
 EOF
         echo "Successfully configured $TOML_FILE for local ray mirror ($MARKER)."

@@ -3,6 +3,7 @@ import functools
 import http.server
 import os
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import threading
@@ -216,9 +217,10 @@ def test_siloed_uv_sync_offline(temp_workspace):
             if sys.platform == "darwin"
             else ("win32" if sys.platform == "win32" else "linux")
         )
-        marker = (
-            f"sys_platform == '{platform_marker}' and implementation_name == 'cpython'"
-        )
+        if sys.platform == "darwin":
+            marker = f"sys_platform == '{platform_marker}' and platform_machine == '{platform.machine()}' and implementation_name == 'cpython'"
+        else:
+            marker = f"sys_platform == '{platform_marker}' and implementation_name == 'cpython'"
         pyproject_content = f"""[project]
 name = "client-project"
 version = "0.1.0"
